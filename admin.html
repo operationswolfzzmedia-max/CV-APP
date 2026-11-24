@@ -1,0 +1,56 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Hiring dashboard</title>
+<style>
+:root{--bg:#eef1f5;--ink:#101828;--ac:#1a4fd6;--bd:#c9d1dd;--card:#fff;--g:#067647;--y:#b54708;--r:#d92d20}
+@media(prefers-color-scheme:dark){:root{--bg:#0e131b;--ink:#e6ebf2;--ac:#6f9bff;--bd:#2a3444;--card:#151c27;--g:#47cd89;--y:#fdb022;--r:#f97066}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 system-ui,sans-serif}
+main{max-width:1000px;margin:0 auto;padding:20px}h1{font-size:1.5rem;margin:0 0 14px}
+nav{display:flex;gap:8px;margin-bottom:14px}nav button,.b{padding:9px 16px;border:1px solid var(--bd);border-radius:8px;background:var(--card);color:inherit;font:inherit;cursor:pointer}
+nav button.on,.p{background:var(--ac);color:#fff;border-color:var(--ac)}
+input,select,textarea{padding:9px;border:1px solid var(--bd);border-radius:8px;background:var(--card);color:inherit;font:inherit;max-width:100%}
+textarea{width:100%;min-height:130px}:focus-visible{outline:2px solid var(--ac);outline-offset:2px}
+.bar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}.tw{overflow-x:auto}
+table{width:100%;border-collapse:collapse;background:var(--card);border:1px solid var(--bd)}
+td,th{padding:10px;text-align:left;border-bottom:1px solid var(--bd)}tr[data-id]{cursor:pointer}tr[data-id]:hover{background:var(--bg)}
+.Shortlist{color:var(--g);font-weight:600}.Maybe{color:var(--y);font-weight:600}.Reject,.AI{color:var(--r);font-weight:600}
+.d td{background:var(--bg)}pre{white-space:pre-wrap;max-height:260px;overflow:auto;background:var(--card);padding:10px;border:1px solid var(--bd);border-radius:8px}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:14px;margin-bottom:12px}.card input[type=text]{width:100%;margin-bottom:8px;font-weight:600}
+#lg{max-width:320px;margin:15vh auto}.err{color:var(--r)}[hidden]{display:none!important}
+</style>
+<main>
+<div id="lg" hidden><h1>Admin login</h1><input id="pw" type="password" placeholder="Password" aria-label="Password" style="width:100%;margin-bottom:10px"><button class="b p" id="li" style="width:100%">Log in</button><p class="err" id="le"></p></div>
+<div id="app" hidden><h1>Hiring dashboard</h1>
+<nav><button id="t1" class="on">Candidates</button><button id="t2">Postings</button><a class="b" href="/api/admin/export.csv" download style="text-decoration:none">Export CSV</a></nav>
+<section id="s1"><div class="bar"><select id="fp" aria-label="Filter by posting"></select>
+<select id="fd" aria-label="Filter by AI decision"><option value="">All decisions</option><option>Shortlist</option><option>Maybe</option><option>Reject</option></select></div>
+<div class="tw"><table><thead><tr><th>Score</th><th>Name</th><th>Contact</th><th>Position</th><th>AI decision</th><th>Status</th></tr></thead><tbody id="cl"></tbody></table></div></section>
+<section id="s2" hidden><div id="pl"></div></section></div>
+</main>
+<script>
+const $=s=>document.querySelector(s),e=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+let cands=[],posts=[];
+async function api(u,m='GET',b){const r=await fetch(u,{method:m,headers:{'Content-Type':'application/json'},body:b&&JSON.stringify(b)});
+ if(r.status===401){$('#lg').hidden=false;$('#app').hidden=true;throw Error('login')}const d=await r.json();if(!r.ok)throw Error(d.error);return d}
+async function load(){[cands,posts]=await Promise.all([api('/api/admin/candidates'),api('/api/admin/postings')]);$('#lg').hidden=true;$('#app').hidden=false;
+ const v=$('#fp').value;$('#fp').innerHTML='<option value="">All positions</option>'+posts.map(p=>`<option value="${p.id}">${e(p.title)}</option>`).join('');$('#fp').value=v;renderC();renderP()}
+function renderC(){const fp=$('#fp').value,fd=$('#fd').value;
+ const l=cands.filter(c=>(!fp||c.posting_id===fp)&&(!fd||c.ai_decision===fd)).sort((a,b)=>(b.score===''?-1:+b.score)-(a.score===''?-1:+a.score));
+ $('#cl').innerHTML=l.map(c=>`<tr data-id="${c.id}"><td><b>${e(c.score)}</b></td><td>${e(c.name)}</td><td>${e(c.phone)}</td><td>${e(c.posting)}</td><td class="${e(c.ai_decision.split(' ')[0])}">${e(c.ai_decision)}</td><td>${e(c.status)}</td></tr>
+ <tr class="d" id="d${c.id}" hidden><td colspan="6"><p>${e(c.email)} · ${e(c.phone)} · ${e(c.date.slice(0,10))}</p><p><b>Why:</b> ${e(c.reason)}</p><p><b>Strengths:</b> ${e(c.strengths)}</p><p><b>Gaps:</b> ${e(c.gaps)}</p>
+ <p><select data-st="${c.id}" aria-label="Set status">${['New','Shortlisted','Hold','Rejected'].map(x=>`<option${x===c.status?' selected':''}>${x}</option>`).join('')}</select>
+ <button class="b p" data-pdf="${c.id}">View PDF</button> <a href="/api/admin/cv-file/${c.id}" target="_blank" rel="noopener">Open in new tab</a> <a class="b" href="/api/admin/cv-file/${c.id}?download=1" download>Download PDF</a> <button class="b" data-cv="${c.id}">View CV text</button> ${c.cv_link?`<a href="${e(c.cv_link)}" target="_blank" rel="noopener">Open original CV</a>`:''}</p><iframe id="pf${c.id}" title="CV PDF" hidden style="width:100%;height:520px;border:1px solid var(--bd);background:#fff"></iframe><pre id="cv${c.id}" hidden></pre></td></tr>`).join('')||'<tr><td colspan="6">No candidates yet.</td></tr>'}
+function pc(p){return`<div class="card" data-p="${p.id||''}"><input type="text" value="${e(p.title)}" placeholder="Position title" aria-label="Title"><textarea aria-label="Requirements" placeholder="Write the requirements: experience, must-have skills, good-to-have skills…">${e(p.requirements)}</textarea>
+ <p>${p.id?`<label><input type="checkbox" ${p.active==='YES'?'checked':''}> Open for applications</label> `:''}<button class="b p" data-save>${p.id?'Save changes':'Add position'}</button> <span></span></p></div>`}
+function renderP(){$('#pl').innerHTML=posts.map(pc).join('')+'<h2>New position</h2>'+pc({title:'',requirements:''})}
+document.addEventListener('click',async ev=>{const t=ev.target,r=t.closest('tr[data-id]');
+ if(r&&!t.closest('select,button,a'))$('#d'+r.dataset.id).hidden=!$('#d'+r.dataset.id).hidden;
+ if(t.dataset.pdf){const f=$('#pf'+t.dataset.pdf);if(!f.src)f.src='/api/admin/cv-file/'+t.dataset.pdf;f.hidden=!f.hidden}
+ if(t.dataset.cv){const p=$('#cv'+t.dataset.cv);p.textContent=(await api('/api/admin/cv/'+t.dataset.cv)).text||'No text saved.';p.hidden=!p.hidden}
+ if(t.dataset.save!==undefined){const c=t.closest('.card'),id=c.dataset.p,b={title:c.querySelector('input[type=text]').value,requirements:c.querySelector('textarea').value},ck=c.querySelector('[type=checkbox]');
+  if(ck)b.active=ck.checked?'YES':'NO';
+  try{await api(id?'/api/admin/postings/'+id:'/api/admin/postings',id?'PUT':'POST',b);await load()}catch(x){c.querySelector('span').textContent=x.message}}});
+document.addEventListener('change',async ev=>{const t=ev.target;if(t.dataset.st){await api('/api/admin/candidates/'+t.dataset.st,'PUT',{status:t.value});cands.find(c=>c.id===t.dataset.st).status=t.value}
+ if(t.id==='fp'||t.id==='fd')renderC()});
+$('#li').onclick=async()=>{try{await api('/api/login','POST',{password:$('#pw').value});load()}catch(x){$('#le').textContent=x.message==='login'?'Wrong password':x.message}};
+$('#t1').onclick=$('#t2').onclick=ev=>{const a=ev.target.id==='t1';$('#t1').className=a?'on':'';$('#t2').className=a?'':'on';$('#s1').hidden=!a;$('#s2').hidden=a};
+load().catch(()=>{});
+</script></html>

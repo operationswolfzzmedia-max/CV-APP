@@ -1,0 +1,2 @@
+{"name":"cv-screening-vercel","version":"1.0.0","private":true,"engines":{"node":">=18"},
+"dependencies":{"@anthropic-ai/sdk":"latest","@neondatabase/serverless":"latest","busboy":"^1.6.0","unpdf":"^1.0.0"}}

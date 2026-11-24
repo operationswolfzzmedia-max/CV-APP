@@ -1,0 +1,29 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Join our team</title>
+<style>
+:root{--bg:#eef1f5;--ink:#101828;--ac:#1a4fd6;--bd:#c9d1dd;--card:#fff}
+@media(prefers-color-scheme:dark){:root{--bg:#0e131b;--ink:#e6ebf2;--ac:#6f9bff;--bd:#2a3444;--card:#151c27}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 system-ui,sans-serif}
+main{max-width:480px;margin:6vh auto;padding:28px;background:var(--card);border:1px solid var(--bd);border-radius:12px}
+h1{font-size:1.7rem;margin:0 0 4px;letter-spacing:-.02em}p{margin:0 0 8px;opacity:.7}
+label{display:block;font-weight:600;font-size:14px;margin:16px 0 5px}
+input,select{width:100%;padding:11px;border:1px solid var(--bd);border-radius:8px;background:transparent;color:inherit;font:inherit}
+input:focus-visible,select:focus-visible,button:focus-visible{outline:2px solid var(--ac);outline-offset:2px}
+button{margin-top:24px;width:100%;padding:13px;border:0;border-radius:8px;background:var(--ac);color:#fff;font:600 16px system-ui;cursor:pointer}
+button:disabled{opacity:.5}#m{margin-top:14px;min-height:24px}.err{color:#d92d20}
+</style>
+<main><h1>Join our team</h1><p>Upload your CV and choose the role you want.</p>
+<form id="f"><label for="n">Full name</label><input id="n" name="name" required>
+<label for="e">Email</label><input id="e" name="email" type="email" required>
+<label for="p">Contact number</label><input id="p" name="phone" type="tel" required pattern="[0-9+ ()\-]{10,15}" title="Enter a valid phone number">
+<label for="j">Position</label><select id="j" name="posting_id" required></select>
+<label for="c">Upload your CV (PDF only, max 3 MB)</label><input id="c" name="cv" type="file" accept="application/pdf,.pdf" required>
+<button id="b">Submit application</button><div id="m" role="status"></div></form></main>
+<script>
+const $=s=>document.querySelector(s);
+fetch('/api/postings').then(r=>r.json()).then(l=>{$('#j').innerHTML=l.length?'<option value="">Select a position</option>'+l.map(p=>`<option value="${p.id}">${p.title.replace(/</g,'&lt;')}</option>`).join(''):'<option value="">No open positions</option>'});
+$('#f').onsubmit=async ev=>{ev.preventDefault();$('#b').disabled=true;$('#m').className='';$('#m').textContent='Submitting. This can take up to 30 seconds…';
+ try{const r=await fetch('/api/apply',{method:'POST',body:new FormData(ev.target)}),d=await r.json();
+  if(!r.ok)throw Error(d.error||'Something went wrong');
+  $('#f').innerHTML='<h1>Application received</h1><p>Thank you. We will contact you if your profile matches.</p>';
+ }catch(x){$('#m').className='err';$('#m').textContent=x.message;$('#b').disabled=false}};
+</script></html>
