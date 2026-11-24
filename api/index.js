@@ -1,5 +1,7 @@
 const {neon}=require('@neondatabase/serverless'),Anthropic=require('@anthropic-ai/sdk'),Busboy=require('busboy'),crypto=require('crypto');
-const E=process.env,sql=neon(E.DATABASE_URL),ai=new Anthropic({apiKey:E.ANTHROPIC_API_KEY});
+const E=process.env,ai=new Anthropic({apiKey:E.ANTHROPIC_API_KEY});
+const DBM=(E.DATABASE_URL||'').match(/postgres(?:ql)?:\/\/[^\s'"]+/),DB=DBM?DBM[0].replace(/&?channel_binding=require/,''):'';
+const sql=DB?neon(DB):()=>{throw Error('DATABASE_URL is missing or is not a postgresql:// link')};
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
 const SEED=[['Tech Employee','Role: Tech Employee\n- 2+ years in software development or IT support\n- Must have: JavaScript or Python, SQL / Google Sheets basics, debugging skills\n- Good to have: API integration, Shopify / e-commerce tools\n- Clear communication in English and Hindi'],
 ['Manager','Role: Manager\n- 4+ years experience, at least 2 years leading a team\n- Must have: team handling, process improvement, reporting in Excel / Google Sheets\n- Good to have: e-commerce or retail operations\n- Strong ownership and communication'],
